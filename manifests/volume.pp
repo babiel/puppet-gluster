@@ -1,44 +1,44 @@
-# == Define: gluster::volume
+# @summary Create GlusterFS volumes, and maybe extend them
 #
-# Create GlusterFS volumes, and maybe extend them
+# @param stripe
+#    the stripe count to use for a striped volume
+# @param replica
+#    the replica count to use for a replica volume
+# @param arbiter
+#    the arbiter count to use for a replica volume
+# @param transport
+#    the transport to use. Defaults to tcp
+# @param rebalance
+#    whether to rebalance a volume when new bricks are added
+# @param heal
+#    whether to heal a replica volume when adding bricks
+# @param bricks
+#    an array of bricks to use for this volume
+# @param options
+#    an array of volume options for the volume
+# @param remove_options
+#    whether to permit the removal of active options that are not defined for
+#    this volume.
 #
-# === Parameters
+# @see https://github.com/gluster/glusterfs/blob/master/doc/admin-guide/en-US/markdown/admin_managing_volumes.md#tuning-options
 #
-# stripe: the stripe count to use for a striped volume
-# replica: the replica count to use for a replica volume
-# arbiter: the arbiter count to use for a replica volume
-# transport: the transport to use. Defaults to tcp
-# rebalance: whether to rebalance a volume when new bricks are added
-# heal: whether to heal a replica volume when adding bricks
-# bricks: an array of bricks to use for this volume
-# options: an array of volume options for the volume
-#          https://github.com/gluster/glusterfs/blob/master/doc/admin-guide/en-US/markdown/admin_managing_volumes.md#tuning-options
-# remove_options: whether to permit the removal of active options that
-#                 are not defined for this volume.  Default: false
+# @example
+#   gluster::volume { 'storage1':
+#     replica => 2,
+#     bricks  => [
+#                  'srv1.local:/export/brick1/brick',
+#                  'srv2.local:/export/brick1/brick',
+#                  'srv1.local:/export/brick2/brick',
+#                  'srv2.local:/export/brick2/brick',
+#     ],
+#     options => [
+#                  'server.allow-insecure: on',
+#                  'nfs.ports-insecure: on',
+#                ],
+#   }
 #
-# === Examples
-#
-# gluster::volume { 'storage1':
-#   replica => 2,
-#   bricks  => [
-#                'srv1.local:/export/brick1/brick',
-#                'srv2.local:/export/brick1/brick',
-#                'srv1.local:/export/brick2/brick',
-#                'srv2.local:/export/brick2/brick',
-#   ],
-#   options => [
-#                'server.allow-insecure: on',
-#                'nfs.ports-insecure: on',
-#              ],
-# }
-#
-# === Authors
-#
-# Scott Merrill <smerrill@covermymeds.com>
-#
-# === Copyright
-#
-# Copyright 2014 CoverMyMeds, unless otherwise noted
+# @author Scott Merrill <smerrill@covermymeds.com>
+# @note Copyright 2014 CoverMyMeds, unless otherwise noted
 #
 define gluster::volume (
   Array[String, 1] $bricks,
@@ -54,10 +54,10 @@ define gluster::volume (
   Optional[Integer] $arbiter                  = undef,
 ) {
 
-  if $force {
-    $_force = 'force'
+  $_force = if $force {
+    'force'
   } else {
-    $_force = ''
+    ''
   }
 
   if $stripe {
@@ -66,10 +66,10 @@ define gluster::volume (
     $_stripe = ''
   }
 
-  if $replica {
-    $_replica = "replica ${replica}"
+  $_replica = if $replica {
+    "replica ${replica}"
   } else {
-    $_replica = ''
+    ''
   }
 
   $_transport = "transport ${transport}"
@@ -222,12 +222,9 @@ define gluster::volume (
       }
 
       # did the options change?
-      $current_options = getvar("gluster_volume_${title}_options")
-      if $current_options {
-        $_current = sort($current_options)
-      } else {
-        $_current = []
-      }
+      $current_options_hash = pick(fact("gluster_volumes.${title}.options"), {})
+      $_current = sort(join_keys_to_values($current_options_hash, ': '))
+
       if $_current != $_options {
         #
         # either of $current_options or $_options may be empty.
@@ -258,7 +255,7 @@ define gluster::volume (
             create_resources( ::gluster::volume::option, $remove )
           } else {
             $remove_str = join( keys($remove), ', ' )
-            notice("NOT REMOVING the following options for volume ${title}:${remove_str}.")
+            notice("NOT REMOVING the following options for volume ${title}: ${remove_str}.")
           }
         }
         if ! empty($to_add) {

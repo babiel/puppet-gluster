@@ -1,40 +1,33 @@
-# == Define: gluster::volume::option
+# @summary set or remove a Gluster volume option
 #
-# set or remove a Gluster volume option
+# @param title
+#    the name of the volume, a colon, and the name of the option
+# @param value
+#    the value to set for this option
+# @param ensure
+#    whether to set or remove an option
 #
-# === Parameters
+# @example
+#   gluster::volume::option { 'gv0:nfs.disable':
+#     value  => 'on',
+#   }
 #
-# $title: the name of the volume, a colon, and the name of the option
-# $value: the value to set for this option
-# $ensure: whether to set or remove an option
+# @example
+#   gluster::volume::option { 'gv0:server.allow-insecure':
+#     value  => 'on',
+#   }
 #
-# === Examples
+# @example To remove a previously-set option:
+#   gluster::volume::option { 'gv0:feature.read-only':
+#     ensure => absent,
+#   }
 #
-# gluster::volume::option { 'gv0:nfs.disable':
-#   value  => 'on',
-# }
-#
-# gluster::volume::option { 'gv0:server.allow-insecure':
-#   value  => 'on',
-# }
-#
-#
-# To remove a previously-set option:
-# gluster::volume::option { 'gv0:feature.read-only':
-#   ensure => absent,
-# }
-#
-# === Authors
-#
-# Scott Merrill <smerrill@covermymeds.com>
-#
-# === Copyright
-#
-# Copyright 2014 CoverMyMeds, unless otherwise noted
+# @author Scott Merrill <smerrill@covermymeds.com>
+# @note Copyright 2014 CoverMyMeds, unless otherwise noted
 #
 define gluster::volume::option (
-  $value  = undef,
-  $ensure = true,
+  Optional[Variant[Boolean, String, Numeric]] $value  = undef,
+  Enum['present', 'absent']                   $ensure = 'present',
 ) {
 
   $arr = split( $title, ':' )
@@ -46,13 +39,22 @@ define gluster::volume::option (
   $vol = $arr[0]
   $opt = $arr[1]
 
-  if $ensure == 'absent' {
-    $cmd = "reset ${vol} ${opt}"
+  $cmd = if $ensure == 'absent' {
+    "reset ${vol} ${opt}"
   } else {
-    $cmd = "set ${vol} ${opt} ${value}"
+    "set ${vol} ${opt} ${value}"
   }
 
-  exec { "gluster option ${vol} ${opt} ${value}":
-    command => "${::gluster_binary} volume ${cmd}",
+  $_value = $value ? {
+    Boolean => if $value {
+      'on'
+    } else {
+      'off'
+    },
+    default => $value,
+  }
+
+  exec { "gluster option ${vol} ${opt} ${_value}":
+    command => "${facts['gluster_binary']} volume ${cmd}",
   }
 }
