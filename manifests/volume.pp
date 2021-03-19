@@ -246,7 +246,7 @@ define gluster::volume (
         }
 
         # did the options change?
-        $current_options_hash = pick(fact("gluster_volumes.${title}.options"), {})
+        $current_options_hash = merge(pick(fact("gluster_volumes.${title}.options"), {}), pick(fact("gluster_volumes.${title}.features"), {}))
         $_current = sort(join_keys_to_values($current_options_hash, ': '))
 
         if $_current != $_options {
