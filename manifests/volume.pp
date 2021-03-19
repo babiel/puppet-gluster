@@ -124,7 +124,7 @@ define gluster::volume (
   if getvar('::gluster_binary') {
     # we need the Gluster binary to do anything!
 
-    if getvar('::gluster_volume_list') and member( split( $::gluster_volume_list, ',' ), $title ) {
+    if member(keys($::gluster_volumes), $title) {
       $already_exists = true
     } else {
       $already_exists = false
